@@ -122,9 +122,12 @@ At least one tag must always be focused and each view must be assigned at
 least one tag. Operations that would violate either of these requirements
 are ignored by river.
 
-*set-focused-tags* _tags_
+*set-focused-tags* [*-alternate*] _tags_
 	Show views with tags corresponding to the set bits of _tags_ on the
 	currently focused output.
+
+	- *-alternate*: If the currently focused tags are equal to _tags_, focus
+	the previous tags (see *focus-previous-tags*).
 
 *set-view-tags* _tags_
 	Assign the currently focused view the tags corresponding to the set
