@@ -16,6 +16,7 @@
 
 const std = @import("std");
 const mem = std.mem;
+const flags = @import("flags");
 
 const server = &@import("../main.zig").server;
 const util = @import("../util.zig");
@@ -29,11 +30,25 @@ pub fn setFocusedTags(
     args: []const [:0]const u8,
     out: *?[]const u8,
 ) Error!void {
-    const tags = try parseTags(args, out);
+    if (args.len < 2) return Error.NotEnoughArguments;
+    const result = flags.parser([:0]const u8, &.{
+        .{ .name = "alternate", .kind = .boolean },
+    }).parse(args[1..]) catch {
+        return error.InvalidOption;
+    };
+    if (result.args.len < 1) return Error.NotEnoughArguments;
+    if (result.args.len > 1) return Error.TooManyArguments;
+
+    const tags = try parseTagsAt(result.args[0], out);
+
     const output = seat.focused_output orelse return;
     if (output.pending.tags != tags) {
         output.previous_tags = output.pending.tags;
         output.pending.tags = tags;
+        server.root.applyPending();
+    } else if (output.pending.tags == tags and result.flags.alternate) {
+        output.pending.tags = output.previous_tags;
+        output.previous_tags = tags;
         server.root.applyPending();
     }
 }
@@ -133,7 +148,14 @@ fn parseTags(
     if (args.len < 2) return Error.NotEnoughArguments;
     if (args.len > 2) return Error.TooManyArguments;
 
-    const tags = try std.fmt.parseInt(u32, args[1], 10);
+    return parseTagsAt(args[1], out);
+}
+
+fn parseTagsAt(
+    arg: [:0]const u8,
+    out: *?[]const u8,
+) Error!u32 {
+    const tags = try std.fmt.parseInt(u32, arg, 10);
 
     if (tags == 0) {
         out.* = try std.fmt.allocPrint(util.gpa, "tags may not be 0", .{});
